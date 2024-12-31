@@ -52,23 +52,23 @@ func TestDecodeValidate(t *testing.T) {
 	testMap, _ := createTestDecoder(t)
 	data, errMap := DecodeValidate[TestData](testMap)
 	require.IsType(t, TestData{}, data)
-	require.Equal(t, errMap["Bob"], "")
+	require.Equal(t, errMap["Bob"].Message, "")
 
 	testMap["Bob"] = []string{}
 	data, errMap = DecodeValidate[TestData](testMap)
-	require.Equal(t, errMap["Bob"], "")
+	require.Equal(t, errMap["Bob"].Message, "")
 
 	testMap["Bob"] = []string{""}
 	data, errMap = DecodeValidate[TestData](testMap)
-	require.Equal(t, errMap["Bob"], "")
+	require.Equal(t, errMap["Bob"].Message, "")
 
 	testMap["Bob"] = []string{"X"}
 	data, errMap = DecodeValidate[TestData](testMap)
-	require.Empty(t, errMap["Bob"])
+	require.Empty(t, errMap["Bob"].Message)
 
 	testMap["FavNum"] = []string{"55"}
 	data, errMap = DecodeValidate[TestData](testMap)
-	require.Empty(t, errMap["FavNum"])
+	require.Empty(t, errMap["FavNum"].Message)
 
 }
 
@@ -81,7 +81,7 @@ func TestValidateWhitespaceRequired(t *testing.T) {
 	testMap["Bob"] = []string{" "}
 	_, errMap := DecodeValidate[TestData](testMap)
 	require.Contains(t, errMap, "Bob")
-	require.Equal(t, errMap["Bob"], "This field cannot be blank")
+	require.Equal(t, errMap["Bob"].Message, "This field cannot be blank")
 
 }
 
@@ -117,8 +117,8 @@ func TestDecoderResultWithErrorMsgs(t *testing.T) {
 	// testMap["Age"] = []string{}
 	// testMap["CreatedAt"] = []string{}
 	_, errMap := DecodeValidate[TestData](testMap)
-	require.Equal(t, errMap["Age"], "Age is required")
-	require.Equal(t, errMap["CreatedAt"], "CreatedAt is required")
+	require.Equal(t, errMap["Age"].Message, "Age is required")
+	require.Equal(t, errMap["CreatedAt"].Message, "CreatedAt is required")
 
 }
 
@@ -130,7 +130,7 @@ func TestRegisterDefaultValidatorErrMsg(t *testing.T) {
 	testMap, _ := createTestDecoder(t)
 	testMap["NotRequiredNotBlank"] = []string{" "}
 	_, errMap := DecodeValidate[TestData](testMap)
-	require.Equal(t, errMap["NotRequiredNotBlank"], "This field cannot be blank")
+	require.Equal(t, errMap["NotRequiredNotBlank"].Message, "This field cannot be blank")
 
 }
 
@@ -147,7 +147,7 @@ func TestRegisterDefaultValidatorErrMsgDefaultandSpecific(t *testing.T) {
 	testMap, _ := createTestDecoder(t)
 	testMap["NotRequiredNotBlank"] = []string{" "}
 	_, errMap := DecodeValidate[TestData](testMap)
-	require.Equal(t, errMap["NotRequiredNotBlank"], "This field cannot be blank")
+	require.Equal(t, errMap["NotRequiredNotBlank"].Message, "This field cannot be blank")
 
 }
 
@@ -163,6 +163,7 @@ func TestErrorOnValidatorWithEqualSignAndErrMsgs(t *testing.T) {
 	testMap, _ := createTestDecoder(t)
 	structErrMap := map[string]string{
 		"_default.required": "This field is required",
+		"_default":          "This field is invalid",
 	}
 	RegisterValidation(TestData{}, structErrMap)
 	testMap["MinTenChars"] = []string{"Not10"}
