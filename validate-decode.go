@@ -17,6 +17,7 @@ var v = newValidator()
 // maps struct fields to error messages
 // var fieldErrsKeys = make(map[string]map[string]map[string]string)
 var fieldErrsKeys = make(map[string]map[string]map[string]string)
+var defaultErrMap = make(map[string]string)
 
 // Registers a struct instance{} with a map of errors so that the Validator maps errors to a given validator
 // t is an instance of the struct that is going to be validated
@@ -70,9 +71,22 @@ func RegisterValidation[T any](t T, fieldErrMap map[string]string) {
 	fieldErrsKeys[structName] = errFieldsMap
 }
 
+// Sets default error messages for a given validator across all structs
+// ex:
+//
+//	errMap := map[string]{
+//		"required": "This is field is required",
+//		"email": "This must be na email",
+//	}
+func RegisterDefaultValidatorErrMsg(errMap map[string]string) error {
+	for k, v := range errMap {
+		defaultErrMap[k] = v
+	}
+	return nil
+
+}
+
 func getErrors(d any, errs []validator.FieldError) (map[string]string, error) {
-	// result := make(map[string]interface{})
-	// val := reflect.ValueOf(t)
 	var errMsgs = make(map[string]string)
 	var tag string
 	typ := reflect.TypeOf(d)
@@ -96,9 +110,14 @@ func getErrors(d any, errs []validator.FieldError) (map[string]string, error) {
 
 		errField := err.Field()
 
-		// No error messages are set
+		// No error messages are set, use default, if any
 		if !fieldErrKeysSet {
-			errMsgs[errField] = ""
+			// check for universal validator err msg first
+			errMsg, ok := defaultErrMap[tag]
+			if !ok {
+				errMsg = ""
+			}
+			errMsgs[errField] = errMsg
 			continue
 		}
 
@@ -116,6 +135,7 @@ func getErrors(d any, errs []validator.FieldError) (map[string]string, error) {
 
 		if defaultErrMsgOK {
 			errMsgs[errField] = defaultErrMsg
+			continue
 		}
 
 	}

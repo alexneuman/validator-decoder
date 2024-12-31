@@ -8,11 +8,12 @@ import (
 )
 
 type TestData struct {
-	FirstName string    `decoder:""`
-	Age       int       `validate:"required"`
-	FavNum    int       `validate:""`
-	Bob       string    `validate:"required,notblank"`
-	TestDate  time.Time `validate:"required"`
+	FirstName           string    `decoder:""`
+	Age                 int       `validate:"required"`
+	FavNum              int       `validate:""`
+	Bob                 string    `validate:"required,notblank"`
+	TestDate            time.Time `validate:"required"`
+	NotRequiredNotBlank string    `validate:"notblank"`
 }
 
 func createTestDecoder(_ *testing.T) (map[string][]string, TestData) {
@@ -116,5 +117,17 @@ func TestDecoderResultWithErrorMsgs(t *testing.T) {
 	_, errMap := DecodeValidate[TestData](testMap)
 	require.Equal(t, errMap["Age"], "Age is required")
 	require.Equal(t, errMap["TestDate"], "TestDate is required")
+
+}
+
+func TestRegisterDefaultValidatorErrMsg(t *testing.T) {
+	defaultErrMap := map[string]string{
+		"notblank": "This field cannot be blank",
+	}
+	RegisterDefaultValidatorErrMsg(defaultErrMap)
+	testMap, _ := createTestDecoder(t)
+	testMap["NotRequiredNotBlank"] = []string{" "}
+	_, errMap := DecodeValidate[TestData](testMap)
+	require.Equal(t, errMap["NotRequiredNotBlank"], "This field cannot be blank")
 
 }
