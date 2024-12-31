@@ -15,9 +15,9 @@ var decoder = new(DecoderParams{IgnoreUnknownKeys: true, ZeroEmpty: true})
 var v = newValidator()
 
 type ValidationError struct {
-	Field         string
-	Message       string
-	SuppliedValue string
+	Field   string
+	Message string
+	Val     string
 }
 
 // maps struct fields to error messages
@@ -109,6 +109,8 @@ func getErrors(d any, errs []validator.FieldError) (map[string]ValidationError, 
 	for _, err := range errs {
 
 		errParam := err.Param()
+		failureVal := err.Value()
+		failureValStr := fmt.Sprintf("%v", failureVal)
 
 		if errParam != "" {
 			tag = err.Tag() + "=" + errParam
@@ -119,21 +121,15 @@ func getErrors(d any, errs []validator.FieldError) (map[string]ValidationError, 
 
 		errField := err.Field()
 		defaultUniversalErrMsg, defaultUniversalErrMsgFound := defaultErrMap[tag]
-		ve := ValidationError{
-			Field: errField,
-			// SuppliedValue: err.Value() ,
-		}
+
 		var errMsg string
 
 		// No error messages are set, use default, if any
 		if !fieldErrKeysSet {
 			// check for universal validator err msg first
 			errMsg, ok = defaultErrMap[tag]
-			if !ok {
-				errMsg = ""
-			}
 
-			errMsgs[errField] = ve
+			// errMsgs[errField] = ve
 		} else if errMsg, ok = fieldErrKeys[errField][tag]; ok {
 
 		} else if errMsg, ok = fieldErrKeys["_default"][tag]; ok {
@@ -148,7 +144,13 @@ func getErrors(d any, errs []validator.FieldError) (map[string]ValidationError, 
 		// set default message if exists
 
 		// No error message
-		ve.Message = errMsg
+		ve := ValidationError{
+			Field:   errField,
+			Message: errMsg,
+			Val:     failureValStr,
+			// SuppliedValue: err.Value() ,
+
+		}
 
 		errMsgs[errField] = ve
 
