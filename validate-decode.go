@@ -11,14 +11,11 @@ import (
 	"github.com/gorilla/schema"
 )
 
-type ValidationError struct {
-	Field string
-}
-
 var decoder = new(DecoderParams{IgnoreUnknownKeys: true, ZeroEmpty: true})
 var v = newValidator()
 
 // maps struct fields to error messages
+// var fieldErrsKeys = make(map[string]map[string]map[string]string)
 var fieldErrsKeys = make(map[string]map[string]map[string]string)
 
 // Registers a struct instance{} with a map of errors so that the Validator maps errors to a given validator
@@ -130,6 +127,7 @@ func getErrors(d any, errs []validator.FieldError) (map[string]string, error) {
 func newValidator() *validator.Validate {
 	v := validator.New()
 	v.RegisterValidation("datetime", datetimeValidation)
+	v.RegisterValidation("notblank", validateStingNotBlankWhiteSpace)
 	return v
 }
 

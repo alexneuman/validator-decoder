@@ -11,7 +11,7 @@ type TestData struct {
 	FirstName string    `decoder:""`
 	Age       int       `validate:"required"`
 	FavNum    int       `validate:""`
-	Bob       string    `validate:"required"`
+	Bob       string    `validate:"required,notblank"`
 	TestDate  time.Time `validate:"required"`
 }
 
@@ -66,6 +66,19 @@ func TestDecodeValidate(t *testing.T) {
 	testMap["FavNum"] = []string{"55"}
 	data, errMap = DecodeValidate[TestData](testMap)
 	require.Empty(t, errMap["FavNum"])
+
+}
+
+func TestValidateWhitespaceRequired(t *testing.T) {
+	errMsgs := map[string]string{
+		"_default.notblank": "This field cannot be blank",
+	}
+	RegisterValidation(TestData{}, errMsgs)
+	testMap, _ := createTestDecoder(t)
+	testMap["Bob"] = []string{" "}
+	_, errMap := DecodeValidate[TestData](testMap)
+	require.Contains(t, errMap, "Bob")
+	require.Equal(t, errMap["Bob"], "This field cannot be blank")
 
 }
 
