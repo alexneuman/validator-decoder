@@ -131,3 +131,20 @@ func TestRegisterDefaultValidatorErrMsg(t *testing.T) {
 	require.Equal(t, errMap["NotRequiredNotBlank"], "This field cannot be blank")
 
 }
+
+func TestRegisterDefaultValidatorErrMsgDefaultandSpecific(t *testing.T) {
+	defaultErrMap := map[string]string{
+		"notblank": "This field cannot be blank",
+	}
+	structErrMap := map[string]string{
+		"required": "This field is required",
+	}
+	RegisterDefaultValidatorErrMsg(defaultErrMap)
+	RegisterValidation(TestData{}, structErrMap)
+
+	testMap, _ := createTestDecoder(t)
+	testMap["NotRequiredNotBlank"] = []string{" "}
+	_, errMap := DecodeValidate[TestData](testMap)
+	require.Equal(t, errMap["NotRequiredNotBlank"], "This field cannot be blank")
+
+}

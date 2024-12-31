@@ -93,6 +93,7 @@ func getErrors(d any, errs []validator.FieldError) (map[string]string, error) {
 	structName := typ.Name()
 	fieldErrKeys, fieldErrKeysSet := fieldErrsKeys[structName]
 	defaultErrMsg, defaultErrMsgOK := fieldErrKeys["_default"][""]
+	// defaultUniversalErrMsgMapSet := len(defaultErrMap) > 0
 	if fieldErrKeys == nil {
 		fieldErrKeys = map[string]map[string]string{}
 		// return nil, nil
@@ -109,6 +110,7 @@ func getErrors(d any, errs []validator.FieldError) (map[string]string, error) {
 		}
 
 		errField := err.Field()
+		defaultUniversalErrMsg, defaultUniversalErrMsgFound := defaultErrMap[tag]
 
 		// No error messages are set, use default, if any
 		if !fieldErrKeysSet {
@@ -136,6 +138,11 @@ func getErrors(d any, errs []validator.FieldError) (map[string]string, error) {
 		if defaultErrMsgOK {
 			errMsgs[errField] = defaultErrMsg
 			continue
+		}
+
+		// set default message if exists
+		if defaultUniversalErrMsgFound {
+			errMsgs[errField] = defaultUniversalErrMsg
 		}
 
 	}
