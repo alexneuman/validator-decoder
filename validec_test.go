@@ -12,8 +12,9 @@ type TestData struct {
 	Age                 int       `validate:"required"`
 	FavNum              int       `validate:""`
 	Bob                 string    `validate:"required,notblank"`
-	TestDate            time.Time `validate:"required"`
+	CreatedAt           time.Time `validate:"required"`
 	NotRequiredNotBlank string    `validate:"notblank"`
+	MinTenChars         string    `validate:"required,min=10"`
 }
 
 func createTestDecoder(_ *testing.T) (map[string][]string, TestData) {
@@ -22,7 +23,8 @@ func createTestDecoder(_ *testing.T) (map[string][]string, TestData) {
 		"UnknownField": {"UnknownPerson"},
 		"Age":          {"55"},
 		"FavNum":       {"Bob"},
-		"TestDate":     {"2014-11-12"},
+		"CreatedAt":    {"2014-11-12"},
+		"MinTenChars":  {"ABCDEFGHIJLMNOPQRSTUVWXYZ"},
 	}
 
 	fixtureResult := Decode[TestData](fixtureVals)
@@ -87,23 +89,23 @@ func TestDecodeValidateDate(t *testing.T) {
 	testMap, _ := createTestDecoder(t)
 	data, errMap := DecodeValidate[TestData](testMap)
 
-	require.NotContains(t, errMap, "TestDate")
-	require.Equal(t, data.TestDate.IsZero(), false)
+	require.NotContains(t, errMap, "CreatedAt")
+	require.Equal(t, data.CreatedAt.IsZero(), false)
 
-	testMap["TestDate"] = []string{}
+	testMap["CreatedAt"] = []string{}
 	data, errMap = DecodeValidate[TestData](testMap)
-	require.Contains(t, errMap, "TestDate")
+	require.Contains(t, errMap, "CreatedAt")
 
 	// invalid date
-	testMap["TestDate"] = []string{"xxxxxxx"}
+	testMap["CreatedAt"] = []string{"xxxxxxx"}
 	data, errMap = DecodeValidate[TestData](testMap)
-	require.Contains(t, errMap, "TestDate")
+	require.Contains(t, errMap, "CreatedAt")
 }
 
 func TestDecoderResultWithErrorMsgs(t *testing.T) {
 	errMsgs := map[string]string{
-		"Age.required":      "Age is required",
-		"TestDate.required": "TestDate is required",
+		"Age.required":       "Age is required",
+		"CreatedAt.required": "CreatedAt is required",
 	}
 	RegisterValidation(TestData{}, errMsgs)
 
@@ -113,10 +115,10 @@ func TestDecoderResultWithErrorMsgs(t *testing.T) {
 		"FavNum":       {"Bob"},
 	}
 	// testMap["Age"] = []string{}
-	// testMap["TestDate"] = []string{}
+	// testMap["CreatedAt"] = []string{}
 	_, errMap := DecodeValidate[TestData](testMap)
 	require.Equal(t, errMap["Age"], "Age is required")
-	require.Equal(t, errMap["TestDate"], "TestDate is required")
+	require.Equal(t, errMap["CreatedAt"], "CreatedAt is required")
 
 }
 
@@ -146,5 +148,25 @@ func TestRegisterDefaultValidatorErrMsgDefaultandSpecific(t *testing.T) {
 	testMap["NotRequiredNotBlank"] = []string{" "}
 	_, errMap := DecodeValidate[TestData](testMap)
 	require.Equal(t, errMap["NotRequiredNotBlank"], "This field cannot be blank")
+
+}
+
+func TestErrorOnValidatorWithEqualSign(t *testing.T) {
+	testMap, _ := createTestDecoder(t)
+	testMap["MinTenChars"] = []string{"Not10"}
+	_, errMap := DecodeValidate[TestData](testMap)
+	require.Contains(t, errMap, "MinTenChars")
+
+}
+
+func TestErrorOnValidatorWithEqualSignAndErrMsgs(t *testing.T) {
+	testMap, _ := createTestDecoder(t)
+	structErrMap := map[string]string{
+		"_default.required": "This field is required",
+	}
+	RegisterValidation(TestData{}, structErrMap)
+	testMap["MinTenChars"] = []string{"Not10"}
+	_, errMap := DecodeValidate[TestData](testMap)
+	require.Contains(t, errMap, "MinTenChars")
 
 }

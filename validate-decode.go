@@ -143,7 +143,11 @@ func getErrors(d any, errs []validator.FieldError) (map[string]string, error) {
 		// set default message if exists
 		if defaultUniversalErrMsgFound {
 			errMsgs[errField] = defaultUniversalErrMsg
+			continue
 		}
+
+		// No error message
+		errMsgs[errField] = ""
 
 	}
 
