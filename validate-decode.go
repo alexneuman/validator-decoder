@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/schema"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var decoder = new(DecoderParams{IgnoreUnknownKeys: true, ZeroEmpty: true})
@@ -184,6 +185,10 @@ func new(p DecoderParams) *schema.Decoder {
 	d.ZeroEmpty(p.ZeroEmpty)
 	d.RegisterConverter(time.Time{}, timeConverter)
 	// d.RegisterConverter(CustomTime{}, timeConverter)
+	d.RegisterConverter(pgtype.Text{}, PgTypeTextConverter)
+	d.RegisterConverter(pgtype.Int2{}, PgTypeInt2Converter)
+	d.RegisterConverter(pgtype.Int4{}, PgTypeInt4Converter)
+	d.RegisterConverter(pgtype.Date{}, PgTypeDateTimeConverter)
 
 	return d
 }

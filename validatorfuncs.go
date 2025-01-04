@@ -11,3 +11,5 @@ func validateStingNotBlankWhiteSpace(fl validator.FieldLevel) bool {
 	trimmed := strings.TrimSpace(val)
 	return trimmed != ""
 }
+
+// func ValidatePgTypeText(ft validator.FieldLevel)

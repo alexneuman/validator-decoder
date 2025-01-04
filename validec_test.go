@@ -4,27 +4,34 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 )
 
 type TestData struct {
-	FirstName           string    `decoder:""`
-	Age                 int       `validate:"required"`
-	FavNum              int       `validate:""`
-	Bob                 string    `validate:"required,notblank"`
-	CreatedAt           time.Time `validate:"required"`
-	NotRequiredNotBlank string    `validate:"notblank"`
-	MinTenChars         string    `validate:"required,min=10"`
+	FirstName           string      `decoder:""`
+	Age                 int         `validate:"required"`
+	FavNum              int         `validate:""`
+	Bob                 string      `validate:"required,notblank"`
+	CreatedAt           time.Time   `validate:"required"`
+	NotRequiredNotBlank string      `validate:"notblank"`
+	MinTenChars         string      `validate:"required,min=10"`
+	ValPGTypeText       pgtype.Text `validate:required,min=5`
+	ValPGTypeInt2       pgtype.Int2 `validate:gte=5`
+	ValPGTypeDate       pgtype.Date `validate:ne=10`
 }
 
 func createTestDecoder(_ *testing.T) (map[string][]string, TestData) {
 	var fixtureVals = map[string][]string{
-		"FirstName":    {"Steve"},
-		"UnknownField": {"UnknownPerson"},
-		"Age":          {"55"},
-		"FavNum":       {"Bob"},
-		"CreatedAt":    {"2014-11-12"},
-		"MinTenChars":  {"ABCDEFGHIJLMNOPQRSTUVWXYZ"},
+		"FirstName":     {"Steve"},
+		"UnknownField":  {"UnknownPerson"},
+		"Age":           {"55"},
+		"FavNum":        {"Bob"},
+		"CreatedAt":     {"2014-11-12"},
+		"MinTenChars":   {"ABCDEFGHIJLMNOPQRSTUVWXYZ"},
+		"ValPGTypeText": {"ABCDEFGHIJLMNOPQRSTUVWXYZ"},
+		"ValPGTypeInt2": {"10"},
+		"ValPGTypeDate": {"2020-05-01"},
 	}
 
 	fixtureResult := Decode[TestData](fixtureVals)
@@ -170,4 +177,12 @@ func TestErrorOnValidatorWithEqualSignAndErrMsgs(t *testing.T) {
 	_, errMap := DecodeValidate[TestData](testMap)
 	require.Contains(t, errMap, "MinTenChars")
 
+}
+
+func TestPGTypesDecoders(t *testing.T) {
+	testMap, _ := createTestDecoder(t)
+	data, _ := DecodeValidate[TestData](testMap)
+	require.Equal(t, data.ValPGTypeText.String, "ABCDEFGHIJLMNOPQRSTUVWXYZ")
+	require.Equal(t, data.ValPGTypeInt2.Int16, int16(10))
+	require.False(t, data.ValPGTypeDate.Time.IsZero())
 }
