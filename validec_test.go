@@ -1,7 +1,9 @@
 package validec
 
 import (
+	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -192,12 +194,16 @@ func TestErrorValidatorWithEqualSignAndErrMsgs(t *testing.T) {
 
 }
 
-// func TestPGTypesDecoders(t *testing.T) {
-// 	testMap, _ := createTestDecoder(t)
-// 	data, _ := DecodeValidate[TestData](testMap)
-// 	require.Equal(t, data.ValPGTypeText.String, "ABCDEFGHIJLMNOPQRSTUVWXYZ")
-// 	require.Equal(t, data.ValPGTypeInt2.Int16, int16(10))
-// 	require.False(t, data.ValPGTypeDate.Time.IsZero())
-// 	require.True(t, data.ValPGTypeDate.Valid)
+func TestStructIsValid(t *testing.T) {
+	type InValidStruct struct {
+		invalidDatetime time.Time
+	}
 
-// }
+	var ok bool
+	validStructs = make(map[reflect.Type]bool)
+	ok = structIsValid[TestData]()
+	require.True(t, ok)
+	ok = structIsValid[InValidStruct]()
+	require.False(t, ok)
+
+}

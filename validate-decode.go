@@ -11,7 +11,23 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-var validecTypes map[struct{}]string
+func init() {
+	setValidTypes[validTypes]()
+}
+
+func setValidTypes[T any]() {
+	var t T
+	typ := reflect.TypeOf(t)
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		fieldType := field.Type
+		okStructFields[fieldType] = true
+	}
+
+}
+
+var validStructs = make(map[reflect.Type]bool)
+var okStructFields = make(map[reflect.Type]bool)
 
 var decoder = new(DecoderParams{IgnoreUnknownKeys: true, ZeroEmpty: true})
 var v = newValidator()
@@ -27,6 +43,29 @@ type ValidationError struct {
 var fieldErrsKeys = make(map[string]map[string]map[string]string)
 var defaultErrMap = make(map[string]string)
 
+// Whether the struct be validated safely
+func structIsValid[T any]() bool {
+	var t T
+	typ := reflect.TypeOf(t)
+	_, ok := validStructs[typ]
+	if ok {
+		return true
+	}
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		fieldTyp := field.Type
+		_, ok := okStructFields[fieldTyp]
+		if ok {
+			continue
+		}
+		return false
+
+	}
+
+	validStructs[typ] = true
+	return true
+}
+
 // Registers a struct instance{} with a map of errors so that the Validator maps errors to a given validator
 // t is an instance of the struct that is going to be validated
 // fieldErrMap key follows the pattern:
@@ -37,6 +76,7 @@ var defaultErrMap = make(map[string]string)
 //		"_default":           "This field is required",
 //	}
 func RegisterValidation[T any](t T, fieldErrMap map[string]string) {
+
 	var errFieldsMap = make(map[string]map[string]string)
 	errFieldsMap["_default"] = make(map[string]string)
 	errMsg, ok := fieldErrMap["_default"]
@@ -102,10 +142,10 @@ func getErrors(d any, errs []validator.FieldError) (map[string]ValidationError, 
 	structName := typ.Name()
 	fieldErrKeys, fieldErrKeysSet := fieldErrsKeys[structName]
 	defaultErrMsg, defaultErrMsgOK := fieldErrKeys["_default"][""]
-	// defaultUniversalErrMsgMapSet := len(defaultErrMap) > 0
+
 	if fieldErrKeys == nil {
 		fieldErrKeys = map[string]map[string]string{}
-		// return nil, nil
+
 	}
 
 	for _, err := range errs {
@@ -188,13 +228,6 @@ func new(p DecoderParams) *schema.Decoder {
 	return d
 }
 
-// func Decode[T any](data url.Values) T {
-// 	var t T
-// 	decoder.Decode(&t, data)
-// 	return t
-
-// }
-
 func Decode[T any](data map[string][]string) T {
 	var t T
 	decoder.Decode(&t, data)
@@ -210,6 +243,10 @@ func Validate(t any) error {
 }
 
 func DecodeValidate[T any](data url.Values) (T, map[string]ValidationError) {
+	if !structIsValid[T]() {
+		var t T
+		panic(fmt.Sprintf("Type %T is not valid", t))
+	}
 	d := Decode[T](data)
 	err := Validate(d)
 	var errMap = map[string]ValidationError{}
