@@ -11,4 +11,5 @@ type validTypes struct {
 	Time
 	int
 	string
+	bool
 }
