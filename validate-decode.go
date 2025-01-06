@@ -5,12 +5,13 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/schema"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+var validecTypes map[struct{}]string
 
 var decoder = new(DecoderParams{IgnoreUnknownKeys: true, ZeroEmpty: true})
 var v = newValidator()
@@ -70,7 +71,7 @@ func RegisterValidation[T any](t T, fieldErrMap map[string]string) {
 				errFieldsMap["_default"][vn] = errMsg
 				continue validatorNamesLoop
 			}
-			fmt.Printf("[Struct: %s]: Error msg for %s.%s not found", structName, fieldName, vn)
+			// fmt.Printf("[Struct: %s]: Error msg for %s.%s not found", structName, fieldName, vn)
 
 		}
 
@@ -168,12 +169,6 @@ func newValidator() *validator.Validate {
 	return v
 }
 
-func datetimeValidation(fl validator.FieldLevel) bool {
-	format := "2006-01-02"
-	_, err := time.Parse(format, fl.Field().String())
-	return err == nil
-}
-
 type DecoderParams struct {
 	IgnoreUnknownKeys bool
 	ZeroEmpty         bool
@@ -183,7 +178,7 @@ func new(p DecoderParams) *schema.Decoder {
 	d := schema.NewDecoder()
 	d.IgnoreUnknownKeys(p.IgnoreUnknownKeys)
 	d.ZeroEmpty(p.ZeroEmpty)
-	d.RegisterConverter(time.Time{}, timeConverter)
+	d.RegisterConverter(Time{}, timeConverter)
 	// d.RegisterConverter(CustomTime{}, timeConverter)
 	d.RegisterConverter(pgtype.Text{}, PgTypeTextConverter)
 	d.RegisterConverter(pgtype.Int2{}, PgTypeInt2Converter)

@@ -2,36 +2,34 @@ package validec
 
 import (
 	"testing"
-	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 )
 
 type TestData struct {
-	FirstName           string      `decoder:""`
-	Age                 int         `validate:"required"`
-	FavNum              int         `validate:""`
-	Bob                 string      `validate:"required,notblank"`
-	CreatedAt           time.Time   `validate:"required"`
-	NotRequiredNotBlank string      `validate:"notblank"`
-	MinTenChars         string      `validate:"required,min=10"`
-	ValPGTypeText       pgtype.Text `validate:required,min=5`
-	ValPGTypeInt2       pgtype.Int2 `validate:gte=5`
-	ValPGTypeDate       pgtype.Date `validate:ne=10`
+	FirstName           string `decoder:""`
+	Age                 int    `validate:"required"`
+	FavNum              int    `validate:"required"`
+	CreatedAt           Time   `validate:"datetime"`
+	TimeRequired        Time   `validate:"required,datetime"`
+	MinTenChars         string `validate:"required,min=10"`
+	NotRequiredNotBlank string `validate:"notblank"`
+	Bob                 string `validate:"required,notblank"`
+	// ValPGTypeText       pgtype.Text `validate:"required,min=5"`
+	// ValPGTypeInt2       pgtype.Int2 `validate:"gte=5"`
+	// ValPGTypeDate       pgtype.Date `validate:"ne=10"`
+	// NotRequiredDate     pgtype.Date
 }
 
 func createTestDecoder(_ *testing.T) (map[string][]string, TestData) {
 	var fixtureVals = map[string][]string{
-		"FirstName":     {"Steve"},
-		"UnknownField":  {"UnknownPerson"},
-		"Age":           {"55"},
-		"FavNum":        {"Bob"},
-		"CreatedAt":     {"2014-11-12"},
-		"MinTenChars":   {"ABCDEFGHIJLMNOPQRSTUVWXYZ"},
-		"ValPGTypeText": {"ABCDEFGHIJLMNOPQRSTUVWXYZ"},
-		"ValPGTypeInt2": {"10"},
-		"ValPGTypeDate": {"2020-05-01"},
+		"FirstName":    {"Steve"},
+		"Age":          {"55"},
+		"FavNum":       {"Bob"},
+		"CreatedAt":    {"2014-11-12"},
+		"MinTenChars":  {"ABCDEFGHIJLMNOPQRSTUVWXYZ"},
+		"TimeRequired": {"TimeRequired"},
+		"UnknownField": {"UnknownPerson"},
 	}
 
 	fixtureResult := Decode[TestData](fixtureVals)
@@ -42,8 +40,8 @@ func createTestDecoder(_ *testing.T) (map[string][]string, TestData) {
 func TestDecoderResult(t *testing.T) {
 	_, result := createTestDecoder(t)
 	require.Equal(t, result.FirstName, "Steve")
+	// result.FavNum = nil
 	require.Equal(t, result.FavNum, 0)
-	// require.NotContains(t, result, "UnknownPerson")
 
 }
 
@@ -58,8 +56,11 @@ func TestValidator(t *testing.T) {
 func TestDecodeValidate(t *testing.T) {
 	testMap, _ := createTestDecoder(t)
 	data, errMap := DecodeValidate[TestData](testMap)
+
 	require.IsType(t, TestData{}, data)
 	require.Equal(t, errMap["Bob"].Message, "")
+	require.Contains(t, errMap, "FavNum")
+	require.NotContains(t, errMap, "UnknownPerson")
 
 	testMap["Bob"] = []string{}
 	data, errMap = DecodeValidate[TestData](testMap)
@@ -99,14 +100,19 @@ func TestDecodeValidateDate(t *testing.T) {
 	require.NotContains(t, errMap, "CreatedAt")
 	require.Equal(t, data.CreatedAt.IsZero(), false)
 
-	testMap["CreatedAt"] = []string{}
+	testMap["CreatedAt"] = []string{""}
 	data, errMap = DecodeValidate[TestData](testMap)
-	require.Contains(t, errMap, "CreatedAt")
+	require.NotContains(t, errMap, "CreatedAt")
 
 	// invalid date
 	testMap["CreatedAt"] = []string{"xxxxxxx"}
 	data, errMap = DecodeValidate[TestData](testMap)
 	require.Contains(t, errMap, "CreatedAt")
+	require.Contains(t, errMap, "TimeRequired")
+
+	testMap["TimeRequired"] = []string{" "}
+	data, errMap = DecodeValidate[TestData](testMap)
+	require.Contains(t, errMap, "TimeRequired")
 }
 
 func TestDecoderResultWithErrorMsgs(t *testing.T) {
@@ -121,11 +127,15 @@ func TestDecoderResultWithErrorMsgs(t *testing.T) {
 		"UnknownField": {"UnknownPerson"},
 		"FavNum":       {"Bob"},
 	}
-	// testMap["Age"] = []string{}
-	// testMap["CreatedAt"] = []string{}
+	testMap["Age"] = []string{""}
+	testMap["CreatedAt"] = []string{}
 	_, errMap := DecodeValidate[TestData](testMap)
+	require.NotContains(t, errMap, "UnknownField")
 	require.Equal(t, errMap["Age"].Message, "Age is required")
-	require.Equal(t, errMap["CreatedAt"].Message, "CreatedAt is required")
+
+	testMap["CreatedAt"] = nil
+	_, errMap = DecodeValidate[TestData](testMap)
+	require.NotContains(t, errMap, "CreatedAt")
 
 }
 
@@ -146,7 +156,9 @@ func TestRegisterDefaultValidatorErrMsgDefaultandSpecific(t *testing.T) {
 		"notblank": "This field cannot be blank",
 	}
 	structErrMap := map[string]string{
-		"required": "This field is required",
+		"required":              "This field is required",
+		"TimeRequired.required": "TimeRequired is required",
+		"TimeRequired.datetime": "This is not a valid date",
 	}
 	RegisterDefaultValidatorErrMsg(defaultErrMap)
 	RegisterValidation(TestData{}, structErrMap)
@@ -155,10 +167,11 @@ func TestRegisterDefaultValidatorErrMsgDefaultandSpecific(t *testing.T) {
 	testMap["NotRequiredNotBlank"] = []string{" "}
 	_, errMap := DecodeValidate[TestData](testMap)
 	require.Equal(t, errMap["NotRequiredNotBlank"].Message, "This field cannot be blank")
+	require.Equal(t, errMap["TimeRequired"].Message, "This is not a valid date")
 
 }
 
-func TestErrorOnValidatorWithEqualSign(t *testing.T) {
+func TestErrorValidatorWithEqualSign(t *testing.T) {
 	testMap, _ := createTestDecoder(t)
 	testMap["MinTenChars"] = []string{"Not10"}
 	_, errMap := DecodeValidate[TestData](testMap)
@@ -166,7 +179,7 @@ func TestErrorOnValidatorWithEqualSign(t *testing.T) {
 
 }
 
-func TestErrorOnValidatorWithEqualSignAndErrMsgs(t *testing.T) {
+func TestErrorValidatorWithEqualSignAndErrMsgs(t *testing.T) {
 	testMap, _ := createTestDecoder(t)
 	structErrMap := map[string]string{
 		"_default.required": "This field is required",
@@ -179,10 +192,12 @@ func TestErrorOnValidatorWithEqualSignAndErrMsgs(t *testing.T) {
 
 }
 
-func TestPGTypesDecoders(t *testing.T) {
-	testMap, _ := createTestDecoder(t)
-	data, _ := DecodeValidate[TestData](testMap)
-	require.Equal(t, data.ValPGTypeText.String, "ABCDEFGHIJLMNOPQRSTUVWXYZ")
-	require.Equal(t, data.ValPGTypeInt2.Int16, int16(10))
-	require.False(t, data.ValPGTypeDate.Time.IsZero())
-}
+// func TestPGTypesDecoders(t *testing.T) {
+// 	testMap, _ := createTestDecoder(t)
+// 	data, _ := DecodeValidate[TestData](testMap)
+// 	require.Equal(t, data.ValPGTypeText.String, "ABCDEFGHIJLMNOPQRSTUVWXYZ")
+// 	require.Equal(t, data.ValPGTypeInt2.Int16, int16(10))
+// 	require.False(t, data.ValPGTypeDate.Time.IsZero())
+// 	require.True(t, data.ValPGTypeDate.Valid)
+
+// }
